@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f7f9">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Finanças">
+<title>Finanças Pessoais</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true">R$</span>
+    <h1>Finanças <select id="anoSel" aria-label="Ano"></select></h1>
+  </div>
+  <nav class="tabs" id="tabs" aria-label="Seções">
+    <button data-view="painel" class="on">Painel</button>
+    <button data-view="mes">Lançamentos</button>
+    <button data-view="resumo">Resumo mensal</button>
+    <button data-view="ajustes">Ajustes</button>
+  </nav>
+  <button class="sync" id="syncBtn" title="Estado da gravação" aria-live="polite">
+    <span class="dot" id="syncDot"></span><span id="syncTxt">Local</span>
+  </button>
+</header>
+
+<div id="banner" class="banner" hidden></div>
+
+<main id="main">
+  <!-- PAINEL -->
+  <section id="v-painel" class="view">
+    <div class="kpis" id="kpis"></div>
+    <div class="highlights" id="highlights"></div>
+    <div class="grid2">
+      <div class="card"><h2>Entradas × Saídas por mês</h2><div class="chartbox"><canvas id="chMensal"></canvas></div></div>
+      <div class="card"><h2>Total acumulado em conta</h2><div class="chartbox"><canvas id="chAcum"></canvas></div></div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <div class="cardhead"><h2>Gastos por categoria</h2>
+          <select id="catPeriodo" aria-label="Período"></select></div>
+        <div id="catBars" class="catbars"></div>
+      </div>
+      <div class="card"><h2>Insights do ano</h2><div id="insAno" class="insights"></div></div>
+    </div>
+  </section>
+
+  <!-- LANÇAMENTOS (aba do mês) -->
+  <section id="v-mes" class="view" hidden>
+    <div class="chips" id="mesChips" role="tablist" aria-label="Mês"></div>
+    <h2 class="mesTitulo" id="mesTitulo"></h2>
+    <div class="mesTop">
+      <div class="stat"><span>Entradas do mês</span><b class="pos" id="mEnt"></b></div>
+      <div class="stat"><span>Saídas do mês</span><b class="neg" id="mSai"></b></div>
+      <div class="stat"><span>Saldo do mês</span><b id="mSaldo"></b></div>
+      <div class="stat"><span id="mRestLbl">Restante do mês anterior</span><b id="mRest"></b>
+        <button class="link" id="editSaldoIni" hidden>editar</button></div>
+      <div class="stat total"><span>Total acumulado em conta</span><b id="mAcum"></b></div>
+    </div>
+    <details class="card insightsMes" id="insDet"><summary>Insights do mês</summary><div id="insMes" class="insights compact"></div></details>
+    <div class="toolbar">
+      <input type="search" id="busca" placeholder="Buscar descrição ou categoria" aria-label="Buscar">
+      <div class="seg" id="fTipo">
+        <button data-t="" class="on">Todos</button><button data-t="Entrada">Entradas</button><button data-t="Saída">Saídas</button>
+      </div>
+      <button class="btn primary desk-only" id="novoBtn">+ Novo lançamento</button>
+    </div>
+    <div class="card list">
+      <table class="tbl" id="tbl">
+        <thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th class="r">Valor (R$)</th><th></th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div id="cards" class="cardlist"></div>
+      <div id="vazio" class="empty" hidden>Nenhum lançamento neste mês.</div>
+    </div>
+  </section>
+
+  <!-- RESUMO MENSAL -->
+  <section id="v-resumo" class="view" hidden>
+    <div class="card">
+      <div class="cardhead"><h2>Resumo mensal por categoria</h2>
+        <label class="chk"><input type="checkbox" id="ocultaZero" checked> Ocultar categorias sem movimento</label></div>
+      <div class="scroll"><table class="tbl res" id="resTbl"></table></div>
+    </div>
+  </section>
+
+  <!-- AJUSTES -->
+  <section id="v-ajustes" class="view" hidden>
+    <div class="grid2 top">
+      <div class="card">
+        <h2>Sincronização com o GitHub</h2>
+        <p class="muted">Grava seus lançamentos num arquivo JSON dentro de um repositório seu, para o mesmo dado aparecer no celular e no PC e nunca se perder. Passo a passo no README.</p>
+        <label>Repositório dos dados <input id="gRepo" placeholder="usuario/financas-dados" autocapitalize="none" autocomplete="off"></label>
+        <div class="row2">
+          <label>Branch <input id="gBranch" placeholder="main" autocapitalize="none"></label>
+          <label>Pasta (opcional) <input id="gPasta" placeholder="ex.: dados" autocapitalize="none"></label>
+        </div>
+        <label>Token de acesso (fine-grained, só este repositório)
+          <input id="gToken" type="password" placeholder="github_pat_..." autocomplete="off" autocapitalize="none"></label>
+        <p class="muted small">O token fica salvo apenas neste aparelho (localStorage) e só é enviado para api.github.com.</p>
+        <div class="btns">
+          <button class="btn primary" id="gSalvar">Salvar e sincronizar</button>
+          <button class="btn" id="gTestar">Sincronizar agora</button>
+          <button class="btn danger-o" id="gLimpar">Desconectar</button>
+        </div>
+        <p id="gMsg" class="muted small" aria-live="polite"></p>
+      </div>
+      <div class="card">
+        <h2>Backup e planilha</h2>
+        <p class="muted">Mesmo com a sincronização, vale guardar uma cópia de vez em quando.</p>
+        <div class="btns col">
+          <button class="btn" id="expXlsx">Exportar Excel (abas mensais, igual à planilha)</button>
+          <button class="btn" id="expJson">Exportar backup (.json)</button>
+          <label class="btn filebtn">Importar planilha .xlsx<input type="file" id="impXlsx" accept=".xlsx,.xls" hidden></label>
+          <label class="btn filebtn">Importar backup .json<input type="file" id="impJson" accept=".json,application/json" hidden></label>
+        </div>
+        <p class="muted small">Importar substitui os dados do ano mostrado no topo (o ano é lido do arquivo).</p>
+        <hr>
+        <h2>Categorias</h2>
+        <p class="muted">As listas começam iguais às da planilha. Para criar uma nova, escolha “+ Nova categoria…” no formulário de lançamento.</p>
+        <div id="catManager"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<button class="fab mob-only" id="fab" aria-label="Novo lançamento">+</button>
+
+<nav class="bottomnav mob-only" id="bnav" aria-label="Seções">
+  <button data-view="painel" class="on"><i>◔</i>Painel</button>
+  <button data-view="mes"><i>☰</i>Lançar</button>
+  <button data-view="resumo"><i>▦</i>Resumo</button>
+  <button data-view="ajustes"><i>⚙</i>Ajustes</button>
+</nav>
+
+<!-- Formulário de lançamento -->
+<dialog id="dlg">
+  <form method="dialog" id="frm" autocomplete="off">
+    <h2 id="dlgTitulo">Novo lançamento</h2>
+    <div class="seg big" id="fmTipo">
+      <button type="button" data-t="Entrada">Entrada</button>
+      <button type="button" data-t="Saída" class="on">Saída</button>
+    </div>
+    <label>Valor (R$)
+      <input id="fmValor" inputmode="decimal" placeholder="0,00" required></label>
+    <label>Categoria
+      <select id="fmCat" required></select></label>
+    <label>Descrição
+      <input id="fmDesc" placeholder="Ex.: Almoço" maxlength="120"></label>
+    <div class="row2">
+      <label>Data <input type="date" id="fmData" required></label>
+      <label>Aba (mês) <select id="fmMes"></select></label>
+    </div>
+    <p id="fmErro" class="erro" hidden></p>
+    <div class="btns end">
+      <button type="button" class="btn danger-o" id="fmDel" hidden>Excluir</button>
+      <span class="grow"></span>
+      <button type="button" class="btn" id="fmCancel">Cancelar</button>
+      <button type="submit" class="btn primary" id="fmOk">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="vendor/chart.umd.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
